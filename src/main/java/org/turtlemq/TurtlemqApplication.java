@@ -4,10 +4,10 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class TurtlemqApplication {
+public class TurtleMqApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(TurtlemqApplication.class, args);
+		SpringApplication.run(TurtleMqApplication.class, args);
 	}
 
 }

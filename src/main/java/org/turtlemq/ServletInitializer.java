@@ -7,7 +7,7 @@ public class ServletInitializer extends SpringBootServletInitializer {
 
 	@Override
 	protected SpringApplicationBuilder configure(SpringApplicationBuilder application) {
-		return application.sources(TurtlemqApplication.class);
+		return application.sources(TurtleMqApplication.class);
 	}
 
 }
