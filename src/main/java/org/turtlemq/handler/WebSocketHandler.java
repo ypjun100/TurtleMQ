@@ -1,7 +1,7 @@
 package org.turtlemq.handler;
 
-import ch.qos.logback.core.net.server.Client;
 import com.fasterxml.jackson.core.json.JsonReadFeature;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +13,7 @@ import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 import org.turtlemq.dto.Packet;
+import org.turtlemq.dto.WorkerPacket;
 import org.turtlemq.service.ClientService;
 import org.turtlemq.service.TaskService;
 import org.turtlemq.service.WorkerService;
@@ -22,7 +23,8 @@ import org.turtlemq.service.WorkerService;
 @Log4j2
 public class WebSocketHandler extends TextWebSocketHandler {
     private final ObjectMapper mapper = JsonMapper.builder()
-            .enable(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS)
+            .enable(JsonReadFeature.ALLOW_UNESCAPED_CONTROL_CHARS) // ignore escape character
+            .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES) // allow undeclared properties
             .build();
 
     private final WorkerService workerService;
@@ -43,7 +45,8 @@ public class WebSocketHandler extends TextWebSocketHandler {
         } else if (packet.getType().equals(Packet.MessageType.REQUEST_TASK)) {
             taskService.requestTask(session, packet);
         } else if (packet.getType().equals(Packet.MessageType.RESPONSE_TASK)) {
-            taskService.responseTask(session.getId(), packet);
+            WorkerPacket workerPacket = mapper.readValue(message.getPayload(), WorkerPacket.class);
+            taskService.responseTask(session.getId(), workerPacket);
         }
     }
 

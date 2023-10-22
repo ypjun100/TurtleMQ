@@ -7,6 +7,7 @@ import org.springframework.web.socket.WebSocketSession;
 import org.turtlemq.data.Task;
 import org.turtlemq.data.Worker;
 import org.turtlemq.dto.Packet;
+import org.turtlemq.dto.WorkerPacket;
 
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -36,46 +37,60 @@ public class WorkerService {
         }
     }
 
+    // Return true if task assign failed, and false for success.
     public boolean assignTaskFailed(Task task) {
         // if there is no idle worker, return false;
         if (idleWorkers.isEmpty()) {
+            log.debug("idle workers : {}", idleWorkers);
             return true;
         }
 
-        // Pop idle worker from idleWorkers.
+        // Pop an element from idle worker from idleWorkers.
         Worker worker = workers.get(idleWorkers.removeFirst());
         worker.setStatus(Worker.WorkerStatus.RUNNING);
-        worker.setTask(task);
+        worker.setAssignedTask(task);
 
         // Send request task packet to worker.
-        Packet packet = Packet.builder()
+        WorkerPacket workerPacket = WorkerPacket.WorkerPacketBuilder()
                 .type(Packet.MessageType.REQUEST_TASK)
                 .data(task.getData())
+                .taskId(task.getId())
                 .build();
-        service.send(worker.getSession(), packet);
+        service.send(worker.getSession(), workerPacket);
+
+        log.debug("idle workers : {}", idleWorkers);
         return false;
     }
 
-    public void responseTask(String workerId, Packet responsePacket) {
+    // Check response from worker is right response that server requested.
+    public boolean responseTask(String workerId, WorkerPacket responsePacket) {
         if (workers.containsKey(workerId)) {
             // Send task response to client
             Worker worker = workers.get(workerId);
 
-            // If worker send response that server didn't request, do nothing.
-            if (worker.getStatus().equals(Worker.WorkerStatus.IDLE))
-                return;
+            // If worker sent response that server didn't request, do nothing.
+            if (worker.getStatus().equals(Worker.WorkerStatus.IDLE)) { return false; }
+            // If worker sent another work response, give a chance one more.
+            if (!worker.getAssignedTask().getId().equals(responsePacket.getTaskId())) {
+                responsePacket.setData(worker.getAssignedTask().getData());
+                responsePacket.setTaskId(worker.getAssignedTask().getId());
+                service.send(worker.getSession(), responsePacket);
+                return false;
+            }
 
             Packet packet = Packet.builder()
                     .type(Packet.MessageType.RESPONSE_TASK)
                     .data(responsePacket.getData())
                     .build();
-            service.send(worker.getTask().getRequestor(), packet);
+            service.send(worker.getAssignedTask().getRequestor(), packet);
 
             // Change worker's mode to idle.
             worker.setStatus(Worker.WorkerStatus.IDLE);
-            worker.setTask(null);
+            worker.setAssignedTask(null);
             idleWorkers.add(workerId);
+            return true;
         }
+        return false;
     }
 
     public boolean hasIdleWorker() {

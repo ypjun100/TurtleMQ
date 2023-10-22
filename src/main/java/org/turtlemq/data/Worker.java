@@ -12,5 +12,5 @@ public class Worker {
 
     private @NotNull WebSocketSession session;
     private @NotNull WorkerStatus status;
-    private Task task;
+    private Task assignedTask;
 }

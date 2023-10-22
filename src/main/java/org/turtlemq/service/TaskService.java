@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.socket.WebSocketSession;
 import org.turtlemq.data.Task;
 import org.turtlemq.dto.Packet;
+import org.turtlemq.dto.WorkerPacket;
 
 import java.util.LinkedList;
 import java.util.UUID;
@@ -14,7 +15,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @Log4j2
 public class TaskService {
-    private final BaseService service;
     private final WorkerService workerService;
 
     private final LinkedList<Task> taskQueue = new LinkedList<>();
@@ -30,21 +30,23 @@ public class TaskService {
             // if there is no idle worker, task will be inserted into task queue.
             if (workerService.assignTaskFailed(task)) {
                 taskQueue.add(task);
-                log.info("There is no space");
+                log.debug("Opps. There is no idle worker");
             }
 //        }
     }
 
-    public void responseTask(String workerId, Packet responsePacket) {
-        workerService.responseTask(workerId, responsePacket);
+    public void responseTask(String workerId, WorkerPacket responsePacket) {
+        // If the response from worker is right response that server asked, assign task.
+        if(workerService.responseTask(workerId, responsePacket)) {
+            // If there is a waiting task in task queue, assign task.
+            if (!taskQueue.isEmpty()) {
+                Task task = taskQueue.removeFirst();
 
-        // If there is a waiting task, assign task.
-        if (!taskQueue.isEmpty()) {
-            Task task = taskQueue.removeFirst();
-
-            if (workerService.assignTaskFailed(task)) {
-                taskQueue.add(task);
-                log.info("Opps. Idle worker is already taken.");
+                // Assign a task.
+                if (workerService.assignTaskFailed(task)) {
+                    taskQueue.add(task);
+                    log.debug("Opps. There is no idle worker");
+                }
             }
         }
     }
@@ -58,7 +60,7 @@ public class TaskService {
         Task task = taskQueue.removeFirst();
         if (workerService.assignTaskFailed(task)) {
             taskQueue.add(task);
-            log.info("Opps. Idle worker is already taken.");
+            log.debug("Opps. There is no idle worker");
         }
     }
 }
