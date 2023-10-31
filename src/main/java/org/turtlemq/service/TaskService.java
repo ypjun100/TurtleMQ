@@ -8,7 +8,9 @@ import org.turtlemq.data.Task;
 import org.turtlemq.dto.Packet;
 import org.turtlemq.dto.WorkerPacket;
 
+import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -19,10 +21,15 @@ public class TaskService {
 
     private final LinkedList<Task> taskQueue = new LinkedList<>();
 
+    private final Map<String, String> messageIds = new HashMap<>(); // key - task id, value - message id
+
     public void requestTask(WebSocketSession clientSession, Packet packet) {
 //        if (clientService.hasClient(clientSession.getId())) {
+            String taskId = UUID.randomUUID().toString();
+            messageIds.put(taskId, packet.getMessageId());
+
             Task task = Task.builder()
-                    .id(UUID.randomUUID().toString())
+                    .id(taskId)
                     .requestor(clientSession)
                     .data(packet.getData())
                     .build();
@@ -36,16 +43,21 @@ public class TaskService {
     }
 
     public void responseTask(String workerId, WorkerPacket responsePacket) {
-        // If the response from worker is right response that server asked, assign task.
-        if(workerService.responseTask(workerId, responsePacket)) {
-            // If there is a waiting task in task queue, assign task.
-            if (!taskQueue.isEmpty()) {
-                Task task = taskQueue.removeFirst();
+        // If there is task that requested from 'requestTask()' method, return it.
+        if (messageIds.containsKey(responsePacket.getTaskId())) {
+            String messageId = messageIds.get(responsePacket.getTaskId());
 
-                // Assign a task.
-                if (workerService.assignTaskFailed(task)) {
-                    taskQueue.add(task);
-                    log.debug("Opps. There is no idle worker");
+            // If the response from worker is right response that server asked, assign task.
+            if (workerService.responseTask(workerId, messageId, responsePacket)) {
+                // If there is a waiting task in task queue, assign task.
+                if (!taskQueue.isEmpty()) {
+                    Task task = taskQueue.removeFirst();
+
+                    // Assign a task.
+                    if (workerService.assignTaskFailed(task)) {
+                        taskQueue.add(task);
+                        log.debug("Opps. There is no idle worker");
+                    }
                 }
             }
         }

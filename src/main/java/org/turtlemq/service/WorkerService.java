@@ -63,7 +63,7 @@ public class WorkerService {
     }
 
     // Check response from worker is right response that server requested.
-    public boolean responseTask(String workerId, WorkerPacket responsePacket) {
+    public boolean responseTask(String workerId, String messageId, WorkerPacket responsePacket) {
         if (workers.containsKey(workerId)) {
             // Send task response to client
             Worker worker = workers.get(workerId);
@@ -80,6 +80,7 @@ public class WorkerService {
 
             Packet packet = Packet.builder()
                     .type(Packet.MessageType.RESPONSE_TASK)
+                    .messageId(messageId)
                     .data(responsePacket.getData())
                     .build();
             service.send(worker.getAssignedTask().getRequestor(), packet);

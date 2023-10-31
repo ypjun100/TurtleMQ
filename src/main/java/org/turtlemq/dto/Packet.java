@@ -13,5 +13,6 @@ public class Packet {
     public enum MessageType { REGISTER_WORKER, REGISTER_CLIENT, STATUS, REQUEST_TASK, RESPONSE_TASK }
 
     private MessageType type;
+    private String messageId;
     private String data;
 }
