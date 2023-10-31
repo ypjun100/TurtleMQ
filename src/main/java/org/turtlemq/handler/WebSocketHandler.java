@@ -12,6 +12,8 @@ import org.springframework.web.socket.CloseStatus;
 import org.springframework.web.socket.TextMessage;
 import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
+import org.turtlemq.data.Task;
+import org.turtlemq.data.Worker;
 import org.turtlemq.dto.Packet;
 import org.turtlemq.dto.WorkerPacket;
 import org.turtlemq.service.ClientService;
@@ -53,5 +55,16 @@ public class WebSocketHandler extends TextWebSocketHandler {
     @Override
     public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
         log.warn(session.getId() + " is quit. - " + status.toString());
+
+        // If terminated device is worker, remove worker.
+        if (workerService.hasWorker(session.getId())) {
+            Worker terminatedWorker = workerService.onWorkerTerminated(session.getId());
+
+            // If terminated worker has a task to complete, assign that task to another worker.
+            if (terminatedWorker.getStatus().equals(Worker.WorkerStatus.RUNNING)) {
+                Task assignedTask = terminatedWorker.getAssignedTask();
+                taskService.requestTask(assignedTask);
+            }
+        }
     }
 }

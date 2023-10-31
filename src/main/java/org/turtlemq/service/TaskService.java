@@ -42,6 +42,15 @@ public class TaskService {
 //        }
     }
 
+    // Add a pre-defined task.
+    public void requestTask(Task task) {
+        // if there is no idle worker, task will be inserted into task queue.
+        if (workerService.assignTaskFailed(task)) {
+            taskQueue.add(task);
+            log.debug("Opps. There is no idle worker");
+        }
+    }
+
     public void responseTask(String workerId, WorkerPacket responsePacket) {
         // If there is task that requested from 'requestTask()' method, return it.
         if (messageIds.containsKey(responsePacket.getTaskId())) {

@@ -19,8 +19,8 @@ import java.util.Map;
 public class WorkerService {
     private final BaseService service;
 
-    private final Map<String, Worker> workers = new HashMap<>();
-    private final LinkedList<String> idleWorkers = new LinkedList<>();
+    private final Map<String, Worker> workers = new HashMap<>(); // key - session id
+    private final LinkedList<String> idleWorkers = new LinkedList<>(); // save session ids of workers
 
     public void register(WebSocketSession session, Packet packet) {
         if (!workers.containsKey(session.getId())) {
@@ -94,7 +94,24 @@ public class WorkerService {
         return false;
     }
 
+    // If a worker is terminated, assign the task originally given to terminated worker to another.
+    public Worker onWorkerTerminated(String sessionId) {
+        // Check whether terminated worker is valid.
+        if (workers.containsKey(sessionId)) {
+            Worker worker = workers.get(sessionId); // terminated worker
+
+            // If status of worker is IDLE, remove worker in idleWorkers.
+            if (worker.getStatus().equals(Worker.WorkerStatus.IDLE)) {
+                idleWorkers.remove(sessionId);
+            }
+            workers.remove(sessionId); // remove worker in workers either.
+            return worker;
+        }
+        return Worker.builder().build(); // return empty worker
+    }
+
     public boolean hasIdleWorker() {
         return !idleWorkers.isEmpty();
     }
+    public boolean hasWorker(String workerId) { return workers.containsKey(workerId); }
 }
