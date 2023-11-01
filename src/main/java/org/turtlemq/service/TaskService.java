@@ -2,6 +2,7 @@ package org.turtlemq.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.WebSocketSession;
 import org.turtlemq.data.Task;
@@ -18,13 +19,14 @@ import java.util.UUID;
 @Log4j2
 public class TaskService {
     private final WorkerService workerService;
+    private final ClientService clientService;
 
     private final LinkedList<Task> taskQueue = new LinkedList<>();
 
     private final Map<String, String> messageIds = new HashMap<>(); // key - task id, value - message id
 
     public void requestTask(WebSocketSession clientSession, Packet packet) {
-//        if (clientService.hasClient(clientSession.getId())) {
+        if (clientService.hasClient(clientSession.getId())) {
             String taskId = UUID.randomUUID().toString();
             messageIds.put(taskId, packet.getMessageId());
 
@@ -39,7 +41,7 @@ public class TaskService {
                 taskQueue.add(task);
                 log.debug("Opps. There is no idle worker");
             }
-//        }
+        }
     }
 
     // Add a pre-defined task.

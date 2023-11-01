@@ -21,4 +21,23 @@ public class ClientService {
             service.send(session, packet);
         }
     }
+
+    public void requestClientStatus() {
+        Packet statusPacket = Packet.builder().type(Packet.MessageType.STATUS).build();
+        for (WebSocketSession session : clients.values()) {
+            if (session.isOpen())
+                service.send(session, statusPacket);
+            else { // If client is disconnected, remove client.
+                onClientTerminated(session.getId());
+            }
+        }
+    }
+
+    public void onClientTerminated(String clientId) {
+        // It's okay to use remove() method without try-catch.
+        // Because I already check whether the client is in clients hashmap.
+        clients.remove(clientId);
+    }
+
+    public boolean hasClient(String clientId) { return clients.containsKey(clientId); }
 }

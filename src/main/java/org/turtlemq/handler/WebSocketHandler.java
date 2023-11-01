@@ -17,6 +17,7 @@ import org.turtlemq.data.Worker;
 import org.turtlemq.dto.Packet;
 import org.turtlemq.dto.WorkerPacket;
 import org.turtlemq.service.ClientService;
+import org.turtlemq.service.ConnectionService;
 import org.turtlemq.service.TaskService;
 import org.turtlemq.service.WorkerService;
 
@@ -32,6 +33,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
     private final WorkerService workerService;
     private final ClientService clientService;
     private final TaskService taskService;
+    private final ConnectionService connectionService;
 
     @Override
     protected void handleTextMessage(@NotNull WebSocketSession session, TextMessage message) throws Exception {
@@ -49,22 +51,13 @@ public class WebSocketHandler extends TextWebSocketHandler {
         } else if (packet.getType().equals(Packet.MessageType.RESPONSE_TASK)) {
             WorkerPacket workerPacket = mapper.readValue(message.getPayload(), WorkerPacket.class);
             taskService.responseTask(session.getId(), workerPacket);
+        } else if (packet.getType().equals(Packet.MessageType.STATUS)) {
+//            connectionService.responseStatus(session.getId(), packet);
         }
     }
 
     @Override
-    public void afterConnectionClosed(WebSocketSession session, CloseStatus status) throws Exception {
-        log.warn(session.getId() + " is quit. - " + status.toString());
-
-        // If terminated device is worker, remove worker.
-        if (workerService.hasWorker(session.getId())) {
-            Worker terminatedWorker = workerService.onWorkerTerminated(session.getId());
-
-            // If terminated worker has a task to complete, assign that task to another worker.
-            if (terminatedWorker.getStatus().equals(Worker.WorkerStatus.RUNNING)) {
-                Task assignedTask = terminatedWorker.getAssignedTask();
-                taskService.requestTask(assignedTask);
-            }
-        }
+    public void afterConnectionClosed(@NotNull WebSocketSession session, @NotNull CloseStatus status) {
+        connectionService.onConnectionClosed(session);
     }
 }

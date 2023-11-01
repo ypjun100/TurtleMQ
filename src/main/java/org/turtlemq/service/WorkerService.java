@@ -83,7 +83,10 @@ public class WorkerService {
                     .messageId(messageId)
                     .data(responsePacket.getData())
                     .build();
-            service.send(worker.getAssignedTask().getRequestor(), packet);
+
+            WebSocketSession requestor = worker.getAssignedTask().getRequestor(); // client who requested task
+            if (requestor.isOpen()) // Only if client connection is opened, send the response.
+                service.send(requestor, packet);
 
             // Change worker's mode to idle.
             worker.setStatus(Worker.WorkerStatus.IDLE);
@@ -92,6 +95,18 @@ public class WorkerService {
             return true;
         }
         return false;
+    }
+
+    public void requestServerStatus() {
+        Packet statusPacket = Packet.builder().type(Packet.MessageType.STATUS).build();
+        for (Worker worker : workers.values()) {
+            WebSocketSession session = worker.getSession();
+            if (session.isOpen())
+                service.send(session, statusPacket);
+            else { // If worker is disconnected, remove client.
+                onWorkerTerminated(session.getId());
+            }
+        }
     }
 
     // If a worker is terminated, assign the task originally given to terminated worker to another.
