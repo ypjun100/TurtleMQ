@@ -21,19 +21,16 @@ public class ConnectionService {
     private final TaskService taskService;
 
     // Check clients and workers status every fixedRate second.
-//    @Scheduled(fixedRate = 10000)
-//    private void requestDevicesStatus() {
-//        clientService.requestClientStatus();
-//        workerService.requestServerStatus();
-//    }
-//
-//    public void responseStatus(String sessionId, Packet responsePacket) {
-//        if (clientService.hasClient(sessionId)) {
-//
-//        } else if (workerService.hasWorker(sessionId)) {
-//
-//        }
-//    }
+    @Scheduled(fixedRate = 10000)
+    private void ping() {
+        clientService.requestClientStatus();
+        workerService.requestWorkerStatus();
+    }
+
+    public void responseStatus(String sessionId, Packet responsePacket) {
+        clientService.responseClientStatus(sessionId);
+        workerService.responseWorkerStatus(sessionId);
+    }
 
     public void onConnectionClosed(WebSocketSession session) {
         // If terminated device is worker, remove worker.

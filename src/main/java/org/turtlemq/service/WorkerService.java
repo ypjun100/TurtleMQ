@@ -11,6 +11,7 @@ import org.turtlemq.data.Worker;
 import org.turtlemq.dto.Packet;
 import org.turtlemq.dto.WorkerPacket;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.Map;
@@ -27,6 +28,7 @@ public class WorkerService {
 
     @Autowired
     public WorkerService(BaseService baseService, @Lazy TaskService taskService) {
+        // TaskService and WorkerService have circular dependency, added lazy keyword to fix this relation.
         this.service = baseService;
         this.taskService = taskService;
     }
@@ -106,15 +108,22 @@ public class WorkerService {
         return false;
     }
 
-    public void requestServerStatus() {
+    public void requestWorkerStatus() {
         Packet statusPacket = Packet.builder().type(Packet.MessageType.STATUS).build();
         for (Worker worker : workers.values()) {
             WebSocketSession session = worker.getSession();
-            if (session.isOpen())
+            if (session.isOpen() && worker.getPingPongCount() < 1) {
                 service.send(session, statusPacket);
-            else { // If worker is disconnected, remove client.
+                worker.increasePingPongCount();
+            } else { // If worker is disconnected, remove client.
                 onWorkerTerminated(session.getId());
             }
+        }
+    }
+
+    public void responseWorkerStatus(String sessionId) {
+        if (workers.containsKey(sessionId)) {
+            workers.get(sessionId).resetPingPongCount();
         }
     }
 
@@ -133,6 +142,13 @@ public class WorkerService {
                 taskService.requestTask(assignedTask);
             }
             workers.remove(sessionId); // remove worker in workers either.
+
+            // Close session.
+            try {
+                worker.getSession().close();
+            } catch (IOException e) {
+                log.debug(e);
+            }
         }
     }
 

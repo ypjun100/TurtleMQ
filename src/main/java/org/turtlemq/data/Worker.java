@@ -13,4 +13,8 @@ public class Worker {
     private @NotNull WebSocketSession session;
     private @NotNull WorkerStatus status;
     private Task assignedTask;
+    private int pingPongCount;
+
+    public void increasePingPongCount() { pingPongCount++; }
+    public void resetPingPongCount() { pingPongCount = 0; }
 }

@@ -52,7 +52,7 @@ public class WebSocketHandler extends TextWebSocketHandler {
             WorkerPacket workerPacket = mapper.readValue(message.getPayload(), WorkerPacket.class);
             taskService.responseTask(session.getId(), workerPacket);
         } else if (packet.getType().equals(Packet.MessageType.STATUS)) {
-//            connectionService.responseStatus(session.getId(), packet);
+            connectionService.responseStatus(session.getId(), packet);
         }
     }
 
