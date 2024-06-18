@@ -2,6 +2,8 @@ package org.turtlemq.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.web.socket.WebSocketSession;
 import org.turtlemq.data.Task;
@@ -17,10 +19,17 @@ import java.util.Map;
 @RequiredArgsConstructor
 @Log4j2
 public class WorkerService {
-    private final BaseService service;
+    private BaseService service;
+    private TaskService taskService;
 
     private final Map<String, Worker> workers = new HashMap<>(); // key - session id
     private final LinkedList<String> idleWorkers = new LinkedList<>(); // save session ids of workers
+
+    @Autowired
+    public WorkerService(BaseService baseService, @Lazy TaskService taskService) {
+        this.service = baseService;
+        this.taskService = taskService;
+    }
 
     public void register(WebSocketSession session, Packet packet) {
         if (!workers.containsKey(session.getId())) {
@@ -110,7 +119,7 @@ public class WorkerService {
     }
 
     // If a worker is terminated, assign the task originally given to terminated worker to another.
-    public Worker onWorkerTerminated(String sessionId) {
+    public void onWorkerTerminated(String sessionId) {
         // Check whether terminated worker is valid.
         if (workers.containsKey(sessionId)) {
             Worker worker = workers.get(sessionId); // terminated worker
@@ -118,11 +127,13 @@ public class WorkerService {
             // If status of worker is IDLE, remove worker in idleWorkers.
             if (worker.getStatus().equals(Worker.WorkerStatus.IDLE)) {
                 idleWorkers.remove(sessionId);
+            } else if (worker.getStatus().equals(Worker.WorkerStatus.RUNNING)) {
+                // If terminated worker has a task to complete, assign that task to another worker.
+                Task assignedTask = worker.getAssignedTask();
+                taskService.requestTask(assignedTask);
             }
             workers.remove(sessionId); // remove worker in workers either.
-            return worker;
         }
-        return Worker.builder().build(); // return empty worker
     }
 
     public boolean hasIdleWorker() {

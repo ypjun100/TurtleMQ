@@ -39,13 +39,7 @@ public class ConnectionService {
         // If terminated device is worker, remove worker.
         if (workerService.hasWorker(session.getId())) {
             log.warn(session.getId() + "(Worker) is terminated.");
-            Worker terminatedWorker = workerService.onWorkerTerminated(session.getId());
-
-            // If terminated worker has a task to complete, assign that task to another worker.
-            if (terminatedWorker.getStatus().equals(Worker.WorkerStatus.RUNNING)) {
-                Task assignedTask = terminatedWorker.getAssignedTask();
-                taskService.requestTask(assignedTask);
-            }
+            workerService.onWorkerTerminated(session.getId());
         } else if (clientService.hasClient(session.getId())) { // If client is terminated, remove client.
             log.warn(session.getId() + "(Client) is terminated.");
             clientService.onClientTerminated(session.getId());
